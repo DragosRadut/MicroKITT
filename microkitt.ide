@@ -1,0 +1,290 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <SoftwareSerial.h>
+#include "ELMduino.h"
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+SoftwareSerial mySerial(10, 11); // RX, TX
+#define ELM_PORT mySerial
+
+const int buttonPin = 3;
+int buttonCounter = 0;
+int buttonState = 0;
+int lastButtonState = 0;
+
+ELM327 myELM327;
+uint32_t rpm = 0;
+uint32_t kph = 0;
+uint32_t cool = 0;
+uint32_t maf = 0;
+uint32_t ambient = 0;
+uint32_t load = 0;
+uint16_t distance = 0;
+
+int newPidReq = 0;
+
+void changePidHandler() {
+  lcd.clear();
+  lcd.print("Changing PID...");
+  delay(1000);
+  newPidReq = 0;
+}
+
+void printRPM() {
+  // RPM
+  float tempRPM = myELM327.rpm();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    rpm = (uint32_t)tempRPM;
+    lcd.clear();
+    Serial.print("RPM: ");
+    Serial.println(rpm);
+    lcd.setCursor(0, 0);
+    lcd.print("RPM: ");
+    lcd.print(rpm);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void printKPH() {
+  // KPH
+  float tempKph = myELM327.kph();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    kph = (uint32_t)tempKph;
+    Serial.print("KPH: ");
+    Serial.println(kph);
+    lcd.setCursor(0, 0);
+    lcd.print("KPH: ");
+    lcd.print(kph);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(50);
+}
+
+void printEngineTemp() {
+  // Coolant Temp
+  float tempcool = myELM327.engineCoolantTemp();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    cool = (uint32_t)tempcool;
+    Serial.print("Coolant: ");
+    Serial.println(cool);
+    lcd.setCursor(0, 0);
+    lcd.print("Coolant: ");
+    lcd.print(cool);
+
+    if(cool < 88) {
+      lcd.setCursor(0, 1);
+      lcd.print("Low Temp");
+    } else {
+      lcd.setCursor(0, 1);
+      lcd.print("Operating Temp");
+    }
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void printAmbientTemp() {
+  // Ambient Temp
+  float tempAmbient = myELM327.ambientAirTemp();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    ambient = (uint32_t)tempAmbient;
+    Serial.print("ambient: ");
+    Serial.println(ambient);
+    lcd.setCursor(0, 0);
+    lcd.print("Ambient Temp: ");
+    lcd.print(ambient);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void printMafRate() {
+  // MAF Rate
+  float tempMaf = myELM327.mafRate();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    maf = (uint32_t)tempMaf;
+    Serial.print("maf: ");
+    Serial.println(maf);
+    lcd.setCursor(0, 0);
+    lcd.print("MAF Rate: ");
+    lcd.print(maf);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void printLoad() {
+  // Engine Load
+  float tempLoad = myELM327.engineLoad();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    load = (uint32_t)tempLoad;
+    Serial.print("engineLoad: ");
+    Serial.println(load);
+    lcd.setCursor(0, 0);
+    lcd.print("Load: ");
+    lcd.print(load);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void printDistance() {
+  // Distance since codes cleared
+  float tempDistance = myELM327.distSinceCodesCleared();
+  if (newPidReq == 1) {
+    changePidHandler();
+    return;
+  }
+  if (myELM327.nb_rx_state == ELM_SUCCESS) {
+    lcd.clear();
+    distance = (uint16_t)tempDistance;
+    Serial.print("distance: ");
+    Serial.println(distance);
+    lcd.setCursor(0, 0);
+    lcd.print("Codes Cleared:");
+    lcd.setCursor(0,1);
+    lcd.print(distance);
+  }
+  else if (myELM327.nb_rx_state != ELM_GETTING_MSG) {
+    myELM327.printError();
+    lcd.setCursor(0, 0);
+    lcd.print("Error: ");
+    lcd.print(myELM327.nb_rx_state);
+  }
+  delay(30);
+}
+
+void setup() {
+  // Button
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  Serial.begin(38400);
+  ELM_PORT.begin(38400);
+  Serial.begin(38400);
+  ELM_PORT.begin(38400);
+
+  // LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Initializing...");
+  delay(2000);
+  lcd.clear();
+
+  // ELM & HC-05
+  Serial.println("Attempting to connect to ELM327...");
+  if (!myELM327.begin(ELM_PORT, true, 2000)) {
+    Serial.println("Couldn't connect to OBD scanner");
+    lcd.setCursor(0, 0);
+    lcd.print("OBD connection");
+    lcd.setCursor(0, 1);
+    lcd.print("failed");
+    while (1);
+  }
+
+  Serial.println("Connected to ELM327");
+  lcd.setCursor(0, 0);
+  lcd.print("Connected to");
+  lcd.setCursor(0, 1);
+  lcd.print("ELM327");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  buttonState = digitalRead(buttonPin);
+  if(buttonState == LOW) {
+    buttonCounter = (buttonCounter + 1) % 7;
+    newPidReq = 1;
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Loading data...");
+    delay(1000);
+  }
+
+  switch (buttonCounter) {
+    case 0:
+      printRPM();
+      break;
+    case 1:
+      printKPH();
+      break;
+    case 2:
+      printEngineTemp();
+      break;
+    case 3:
+      printAmbientTemp();
+      break;
+    case 4:
+      printMafRate();
+      break;
+    case 5:
+      printLoad();
+      break;
+    case 6:
+      printDistance();
+      break;
+      
+  }
+}
